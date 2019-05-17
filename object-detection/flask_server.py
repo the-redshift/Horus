@@ -73,5 +73,5 @@ def fetch_objects(camera_id):
             abort(404)
 
 if __name__ == "__main__":
-    cameras = []
+    recognized_objects = []
     app.run()
