@@ -4,6 +4,7 @@ from flask import Flask, abort, jsonify, request
 from object_recognition import ObjectRecognition
 
 lock = Lock()
+recognized_objects = []
 app = Flask(__name__)
 
 @app.route('/')
@@ -73,5 +74,4 @@ def fetch_objects(camera_id):
             abort(404)
 
 if __name__ == "__main__":
-    recognized_objects = []
     app.run()
