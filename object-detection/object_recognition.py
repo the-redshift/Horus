@@ -8,6 +8,7 @@ import zipfile
 import cv2
 
 from collections import defaultdict
+from threading import Lock
 from io import StringIO
 from matplotlib import pyplot as plt
 from PIL import Image
@@ -15,12 +16,15 @@ from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
 
 class ObjectRecognition:
-    def __init__(self, recognition_threshold, video_path, path_to_labels):
+    def __init__(self, recognition_threshold, video_path, path_to_labels, class_subset=None):
+        self.lock = Lock()
+        self.STOP = False
         self.MODEL_NAME = 'ssd_inception_v2_coco_2017_11_17'
         self.RECOGNITION_THRESHOLD = recognition_threshold
         self.VIDEO_PATH = video_path
         self.NUM_CLASSES = 90
         self.PATH_TO_LABELS = path_to_labels
+        self.CLASS_SUBSET = class_subset
 
         # Initialize video stream
         #self.camera = cv2.VideoCapture(0) # WebCam
@@ -37,8 +41,11 @@ class ObjectRecognition:
         MODEL_FILE = self.MODEL_NAME + '.tar.gz'
         DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 
-        opener = urllib.request.URLopener()
-        opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
+        exists = os.path.isfile(MODEL_FILE)
+        if exists is False:
+            opener = urllib.request.URLopener()
+            opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
+
         tar_file = tarfile.open(MODEL_FILE)
         for file in tar_file.getmembers():
             file_name = os.path.basename(file.name)
@@ -54,7 +61,7 @@ class ObjectRecognition:
                 tf.import_graph_def(od_graph_def, name='')
 
         return detection_graph
-    
+
     def _initialize_labels(self):
         label_map = label_map_util.load_labelmap(self.PATH_TO_LABELS)
         categories = label_map_util.convert_label_map_to_categories(
@@ -67,25 +74,42 @@ class ObjectRecognition:
         (im_width, im_height) = image.size
         return np.array(image.getdata()).reshape(
             (im_height, im_width, 3)).astype(np.uint8)
-    
-    def _serve_recognized_objects(self, classes, scores):
+
+    def post_recognized_objects(self, classes, scores):
         objects = []
 
         for index, value in enumerate(classes[0]):
             object_dict = {}
             if scores[0, index] > self.RECOGNITION_THRESHOLD:
-                object_dict[(self.category_index.get(value)).get('name').encode('utf8')] = \
-                                    scores[0, index]
+                class_name = self.category_index.get(value).get('name').encode('utf8')
+                
+                if self.CLASS_SUBSET != None:
+                    with self.lock:
+                        if class_name not in self.CLASS_SUBSET:
+                            continue
+                
+                object_dict[class_name] = scores[0, index]
                 objects.append(object_dict)
 
         print(objects)
+
+    def stop_detecting(self):
+        with lock:
+            self.STOP = True
 
     def detect(self):
         with self.detection_graph.as_default():
             with tf.Session(graph=self.detection_graph) as sess:
                 while True:
+                    with self.lock:
+                        if self.STOP:
+                            break
+
                     # Read frame from camera
                     ret, image_np = self.camera.read()
+
+                    if ret is None:
+                        break
 
                     image_np_expanded = np.expand_dims(image_np, axis=0)
 
@@ -116,6 +140,3 @@ class ObjectRecognition:
                     if cv2.waitKey(25) & 0xFF == ord('q'):
                         cv2.destroyAllWindows()
                         break
-
-horus = ObjectRecognition(50, 0)
-horus.detect()
