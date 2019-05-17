@@ -1,7 +1,9 @@
 from threading import Lock
+import os
 from flask import Flask, abort, jsonify, request
 from object_recognition import ObjectRecognition
 
+lock = Lock()
 app = Flask(__name__)
 
 @app.route('/')
@@ -16,7 +18,10 @@ def start_camera(camera_id):
 
     path_to_labels = os.path.join('C:\\Users\\jwarumze\\TensorFlow\\models\\research\\object_detection\\data', \
              'mscoco_label_map.pbtxt')
-    cameras[camera_id] = ObjectRecognition(50, 0, path_to_labels)
+    path_to_vid = os.path.join('C:\\Users\\jwarumze\\Desktop\\', "car.avi")
+
+    cameras[camera_id] = ObjectRecognition(50, path_to_vid, path_to_labels)
+    cameras[camera_id].detect()
 
     resp = jsonify(success=True)
     return resp
@@ -69,5 +74,4 @@ def fetch_objects(camera_id):
 
 if __name__ == "__main__":
     cameras = []
-    lock = Lock()
     app.run()
