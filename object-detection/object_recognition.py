@@ -21,8 +21,6 @@ class ObjectRecognition:
         self.VIDEO_PATH = video_path
         self.NUM_CLASSES = 90
         self.PATH_TO_LABELS = path_to_labels
-        #self.PATH_TO_LABELS = os.path.join('C:\\Users\\jwarumze\\TensorFlow\\models\\research\\object_detection\\data', \
-             'mscoco_label_map.pbtxt')
 
         # Initialize video stream
         #self.camera = cv2.VideoCapture(0) # WebCam
