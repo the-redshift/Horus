@@ -6,6 +6,7 @@ import tarfile
 import tensorflow as tf
 import zipfile
 import cv2
+import requests
 
 from collections import defaultdict
 from threading import Lock
@@ -16,8 +17,9 @@ from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
 
 class ObjectRecognition:
-    def __init__(self, recognition_threshold, video_path, path_to_labels, class_subset=None):
+    def __init__(self, id, recognition_threshold, video_path, path_to_labels, class_subset=None):
         self.lock = Lock()
+        self.id = id
         self.STOP = False
         self.MODEL_NAME = 'ssd_inception_v2_coco_2017_11_17'
         self.RECOGNITION_THRESHOLD = recognition_threshold
@@ -79,19 +81,22 @@ class ObjectRecognition:
         objects = []
 
         for index, value in enumerate(classes[0]):
-            object_dict = {}
             if scores[0, index] > self.RECOGNITION_THRESHOLD:
                 class_name = self.category_index.get(value).get('name').encode('utf8')
-                
+
                 if self.CLASS_SUBSET != None:
                     with self.lock:
                         if class_name not in self.CLASS_SUBSET:
                             continue
                 
-                object_dict[class_name] = scores[0, index]
-                objects.append(object_dict)
+                objects.append(class_name)
 
-        print(objects)
+        if (len(objects) == 0):
+            return
+
+        ENDPOINT = "http://127.0.0.1:5000/post-recognized-objects/" + str(self.id)
+        payload = {"recognized_objects" : objects}
+        r = requests.post(ENDPOINT, params=payload)
 
     def stop_detecting(self):
         with lock:
@@ -123,6 +128,8 @@ class ObjectRecognition:
                     (boxes, scores, classes, num_detections) = sess.run(
                         [boxes, scores, classes, num_detections],
                         feed_dict={image_tensor: image_np_expanded})
+
+                    self.post_recognized_objects(classes, scores)
 
                     # Visualization of the results of a detection.
                     vis_util.visualize_boxes_and_labels_on_image_array(
