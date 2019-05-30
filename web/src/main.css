@@ -13,31 +13,88 @@ code {
 }
 
 .app {
-  text-align: center;
+    text-align: center;
+    background: #E1E7F6;
+    height: calc(100vh - 60px);
 }
 
 .header {
-  background-color: #282c34;
-  color: white;
-  padding: 10px;
+    background-color: #282c34;
+    color: white;
+    padding: 10px;
+    height: 60px;
+}
+
+.header .btn-conf {
+    color: white;
+    margin-right: 10px;
 }
 
 .header .btn-logout {
-  text-align: right;
-  color: white;
+    color: white;
+    float: right;
 }
 
 .row {
-  margin-top: 50px;
+    height: calc(100vh - 60px);
 }
 
-.column {
-  border-right: 1px solid #282c34;
-  padding: 40px;
+.configuration {
+    border-right: 1px solid #282c34;
+    padding: 30px 0 0 20px;
+}
+
+.camera {
+    padding: 30px;
 }
 
 .login {
-  background-color: lightgrey;
-  text-align: center;
-  padding-bottom: 30px;
+    background-color: #E1E7F6;
+    text-align: center;
+    padding-bottom: 30px;
+    height: 100vh;
+}
+
+.login-form {
+    text-align: center;
+    background: rgba(255,255,255,0.7);
+    padding: 20px;
+    position: absolute;
+    right: 25%;
+    top: 25%;
+    border: 1px solid black;
+    border-radius: 15px;
+}
+
+.select {
+    margin: -10px 30px 0 30px;
+}
+
+.modal-content-custom {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    background: white;
+    overflow: visible;
+    border: 1px solid black;
+    border-radius: 15px;
+    outline: none;
+    padding: 20px;
+    transform: translate(-50%, -50%);
+    width: 35vw;
+    max-height: 80vh;
+}
+
+.alertModal {
+    text-align: center;
+}
+
+.alertModal .inputs {
+    width: 400px;
+}
+.alertModal .selects {
+    display: block;
+    margin: 0 auto;
 }

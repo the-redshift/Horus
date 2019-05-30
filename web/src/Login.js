@@ -37,8 +37,8 @@ class Login extends React.Component {
     render() {
         const { username, password, submitted, loading, error } = this.state;
         return (
-            <div className="login">
-                <div className="col-md-6 offset-3">
+            <div className="container login">
+                <div className="col-md-6 offset-3 login-form">
                     <h1 className="pt-3 pb-3">Login</h1>
                     <form name="form" onSubmit={this.handleSubmit}>
                         <div className={'form-group' + (submitted && !username ? ' has-error' : '')}>
