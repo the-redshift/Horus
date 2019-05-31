@@ -25,6 +25,11 @@ const camera = [
     { value: '3', label: 'Camera 3' }
 ];
 
+const camera_filepath = {
+    1: "arson.mp4",
+    2: "car.avi"
+}
+
 
 class Main extends React.Component {
     constructor(props) {
@@ -60,22 +65,40 @@ class Main extends React.Component {
 
     saveConfiguration(option, values) {
         if (option === 'camera') {
-            console.log(values);
-            /*
-            axios.post(`url`, { values })
-                .then(() => {
-                        Alert.success(`${values.label} has been chosen`);
-                    })
-            */
+            let endpoint = "http://127.0.0.1:5000/start/"
+                         + this.state.selectedCamera.value;
+
+            const payload = new URLSearchParams();
+            payload.append('filename', camera_filepath[this.state.selectedCamera.value])
+
+            axios({
+                url: endpoint,
+                method: 'post',
+                params: payload
+                })
+                .then(function (response) {
+                    Alert.success('Objects configuration sent successfully');
+                })
         } else if (option === 'objects') {
             if (this.state.selectedCamera) {
-                console.log(values);
-                /*
-                axios.post(`url`, { values })
-                    .then(() => {
+                let endpoint = "http://127.0.0.1:5000/specify-class-subset/"
+                            + this.state.selectedCamera.value;
+                
+                var values_array = [];
+                for (var i = 0; i < values.length; i++) 
+                    values_array.push(values[i].value)
+                
+                const payload = new URLSearchParams();
+                payload.append('class_subset', values_array)
+
+                axios({
+                    url: endpoint,
+                    method: 'post',
+                    params: payload
+                    })
+                    .then(function (response) {
                         Alert.success('Objects configuration sent successfully');
                     })
-                */
             } else {
                 Alert.error('Please choose camera first');
             }
@@ -113,6 +136,37 @@ class Main extends React.Component {
         this.setState({
             formFields
         });
+    }
+
+    submitAlerting(email, objects, startDate, endDate)
+    {
+        if (!this.state.selectedCamera)
+        {
+            Alert.error("Select the camera first!");
+            return;
+        }
+
+        var values_array = [];
+        for (var i = 0; i < objects.length; i++) 
+            values_array.push(objects[i].value)
+        
+        let endpoint = "http://127.0.0.1:5000/configure-alerting/"
+                      + this.state.selectedCamera.value;
+
+        const payload = new URLSearchParams();
+        payload.append('mail', email);
+        payload.append('objects', values_array);
+        payload.append('start_date', startDate);
+        payload.append('end_date', endDate);
+
+        axios({
+            url: endpoint,
+            method: 'post',
+            params: payload
+        })
+        .then(function (response) {
+            Alert.success('Alerts configuration sent successfully');
+        })
     }
 
 
@@ -237,7 +291,13 @@ return (
                           autoComplete="off"
                       /> <br/>
 
-                  <button className="btn btn-success m-3" type="submit">Send configuration</button>
+                  <button
+                   className="btn btn-success m-3"
+                   type="button"
+                   onClick={() => this.submitAlerting(email, objects, startDate, endDate)}
+                   >
+                       Send configuration
+                  </button>
                   <button type="button" className="btn btn-danger mr-4" onClick={this.closeAlertModal}>Close</button>
               </form>
           </div>

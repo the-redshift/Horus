@@ -10,11 +10,13 @@ import requests
 
 from collections import defaultdict
 from threading import Lock
+import threading
 from io import StringIO
 from matplotlib import pyplot as plt
 from PIL import Image
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
+from email_thread import Email
 
 class ObjectRecognition:
     def __init__(self, id, recognition_threshold, video_path, path_to_labels, class_subset=None):
@@ -27,6 +29,9 @@ class ObjectRecognition:
         self.NUM_CLASSES = 90
         self.PATH_TO_LABELS = path_to_labels
         self.CLASS_SUBSET = class_subset
+        self.ALERTS = {
+            "set": False,
+        }
 
         # Initialize video stream
         #self.camera = cv2.VideoCapture(0) # WebCam
@@ -82,7 +87,7 @@ class ObjectRecognition:
 
         for index, value in enumerate(classes[0]):
             if scores[0, index] > self.RECOGNITION_THRESHOLD:
-                class_name = self.category_index.get(value).get('name').encode('utf8')
+                class_name = self.category_index.get(value).get('name')
 
                 if self.CLASS_SUBSET != None:
                     with self.lock:
@@ -96,11 +101,26 @@ class ObjectRecognition:
 
         ENDPOINT = "http://127.0.0.1:5000/post-recognized-objects/" + str(self.id)
         payload = {"recognized_objects" : objects}
-        r = requests.post(ENDPOINT, params=payload)
+        requests.post(ENDPOINT, params=payload)
+
+        if self.ALERTS["set"]:
+            if any(x in objects for x in self.ALERTS["objects"]):
+                Email(kwargs={"mail": self.ALERTS["mail"], "objects": objects}).start()
+                self.ALERTS["set"] = False
+
+    def set_alerts(self, mail, objects, start_date, end_date):
+        self.ALERTS["set"] = True
+        self.ALERTS["mail"] = mail
+        self.ALERTS["objects"] = objects.split(',')
+        self.ALERTS["start_date"] = start_date
+        self.ALERTS["end_date"] = end_date
 
     def stop_detecting(self):
         with lock:
             self.STOP = True
+
+    def specify_class_subset(self, class_subset):
+        self.CLASS_SUBSET = class_subset
 
     def detect(self):
         with self.detection_graph.as_default():

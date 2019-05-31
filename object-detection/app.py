@@ -1,12 +1,17 @@
 from threading import Lock
 import os
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request, Response
 from object_recognition import ObjectRecognition
+from flask_cors import CORS
+from tinydb import TinyDB, Query
+import time
 
+db = TinyDB("db.json")
 lock = Lock()
 recognized_objects = {}
 cameras = {}
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def root():
@@ -39,6 +44,24 @@ def stop_camera(camera_id):
         cameras[camera_id].stop_detecting()
         del cameras[camera_id]
 
+        return Response(status=200)
+
+    except KeyError:
+        abort(404)
+
+# Endpoint to set alerting for a given camera
+@app.route("/configure-alerting/<camera_id>", methods=['POST'])
+def configure_alerting(camera_id):
+    try:
+        mail = request.args.get('mail')
+        objects = request.args.get('objects')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        cameras[camera_id].set_alerts(mail, objects, start_date, end_date)
+
+        return Response(status=200)
+
     except KeyError:
         abort(404)
 
@@ -46,10 +69,11 @@ def stop_camera(camera_id):
 @app.route("/specify-class-subset/<camera_id>", methods=['POST'])
 def specify_class_subset(camera_id):
     try:
-        new_class_subset = request.get_json(force=True)
-        new_class_subset = new_class_subset['class_subset']
+        new_class_subset = request.args.get('class_subset')
+        print(new_class_subset)
+        cameras[camera_id].specify_class_subset(new_class_subset)
 
-        # TODO: add in class
+        return Response(status=200)
 
     except KeyError:
         abort(404)
@@ -59,11 +83,16 @@ def specify_class_subset(camera_id):
 def post_objects(camera_id):
     try:
         recognized = request.args.get('recognized_objects')
+        timestamp = int(time.time())
+
         if recognized == None:
             abort(400)
 
         with lock:
             recognized_objects[camera_id] = recognized
+
+        db.insert({'timestamp': timestamp, 'recgonized_objects': str(recognized_objects)})
+        return Response(status=200)
 
     except KeyError:
         abort(404)
