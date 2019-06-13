@@ -36,17 +36,29 @@ class Main extends React.Component {
         super(props);
         let date = new Date();
         this.state = {
-            selectedObjects: [],
-            selectedCamera: '',
+            selectedObjects: JSON.parse(localStorage.getItem('selectedObjects')) || [],
+            selectedCamera: JSON.parse(localStorage.getItem('selectedCamera')) || '',
             isAlertModalOpen: false,
             isReportModalOpen: false,
-            formFields: {email: '', objects: [], startDate: date, endDate: date}
+            alertFormFields: {
+                email: localStorage.getItem('email')|| '',
+                objects: JSON.parse(localStorage.getItem('objects')) || [],
+                startDate: Date.parse(localStorage.getItem('startDate')) || date,
+                endDate: Date.parse(localStorage.getItem('endDate')) || date
+            },
+            reportFormFields: {
+                reportEmail: JSON.parse(localStorage.getItem('reportEmail')) || '',
+                reportStartDate: Date.parse(localStorage.getItem('reportStartDate')) || date,
+                reportEndDate: Date.parse(localStorage.getItem('reportEndDate')) || date
+            },
         };
 
         this.handleLogout = this.handleLogout.bind(this);
         this.saveConfiguration = this.saveConfiguration.bind(this);
         this.openAlertModal = this.openAlertModal.bind(this);
         this.closeAlertModal = this.closeAlertModal.bind(this);
+        this.openReportModal = this.openReportModal.bind(this);
+        this.closeReportModal = this.closeReportModal.bind(this);
     }
 
     handleLogout() {
@@ -54,12 +66,16 @@ class Main extends React.Component {
     }
 
     selectObjects = (selectedObjects) => {
-        this.setState({ selectedObjects });
+        this.setState({ selectedObjects }, () => {
+            localStorage.setItem('selectedObjects', JSON.stringify(this.state.selectedObjects))
+        });
         console.log(`Objects selected:`, selectedObjects);
     }
 
     selectCamera = (selectedCamera) => {
-        this.setState({ selectedCamera });
+        this.setState({ selectedCamera }, () => {
+            localStorage.setItem('selectedCamera', JSON.stringify(this.state.selectedCamera))
+        });
         console.log(`Selected camera:`, selectedCamera);
     }
 
@@ -83,11 +99,11 @@ class Main extends React.Component {
             if (this.state.selectedCamera) {
                 let endpoint = "http://127.0.0.1:5000/specify-class-subset/"
                             + this.state.selectedCamera.value;
-                
+
                 var values_array = [];
-                for (var i = 0; i < values.length; i++) 
+                for (var i = 0; i < values.length; i++)
                     values_array.push(values[i].value)
-                
+
                 const payload = new URLSearchParams();
                 payload.append('class_subset', values_array)
 
@@ -113,30 +129,66 @@ class Main extends React.Component {
         this.setState({isAlertModalOpen: false});
     }
 
+    openReportModal() {
+        this.setState({isReportModalOpen: true});
+    }
+
+    closeReportModal() {
+        this.setState({isReportModalOpen: false});
+    }
+
     handleObjects = (objects) => {
-        this.setState({ formFields: {
-                ...this.state.formFields,
+        this.setState({ alertFormFields: {
+                ...this.state.alertFormFields,
                 objects: objects,
             },
+        }, () => {
+            localStorage.setItem("objects", JSON.stringify(this.state.alertFormFields.objects))
         });
     }
 
     handleDateChange = (dateName, dateValue) => {
         this.setState({
-            formFields: {
-                ...this.state.formFields,
+            alertFormFields: {
+                ...this.state.alertFormFields,
                 [dateName]: dateValue
             }
-        })
+        }, () => {
+            localStorage.setItem(`${dateName}`, this.state.alertFormFields[dateName])
+        });
+    }
+
+    handleReportDateChange = (dateName, dateValue) => {
+        this.setState({
+            reportFormFields: {
+                ...this.state.reportFormFields,
+                [dateName]: dateValue
+            }
+        }, () => {
+            localStorage.setItem(`${dateName}`, this.state.reportFormFields[dateName])
+        });
     }
 
     inputChangeHandler(e) {
-        let formFields = {...this.state.formFields};
-        formFields[e.target.name] = e.target.value;
+        let alertFormFields = {...this.state.alertFormFields};
+        alertFormFields[e.target.name] = e.target.value;
         this.setState({
-            formFields
+            alertFormFields
+        }, () => {
+            localStorage.setItem("email", this.state.alertFormFields.email)
         });
     }
+
+    reportInputChangeHandler(e) {
+        let reportFormFields = {...this.state.reportFormFields};
+        reportFormFields[e.target.name] = e.target.value;
+        this.setState({
+            reportFormFields
+        }, () => {
+            localStorage.setItem("reportEmail", this.state.reportFormFields.reportEmail)
+        });
+    }
+
 
     submitAlerting(email, objects, startDate, endDate)
     {
@@ -147,9 +199,9 @@ class Main extends React.Component {
         }
 
         var values_array = [];
-        for (var i = 0; i < objects.length; i++) 
+        for (var i = 0; i < objects.length; i++)
             values_array.push(objects[i].value)
-        
+
         let endpoint = "http://127.0.0.1:5000/configure-alerting/"
                       + this.state.selectedCamera.value;
 
@@ -169,6 +221,34 @@ class Main extends React.Component {
         })
     }
 
+    submitReport(email, startDate, endDate)
+    {
+        if (!this.state.selectedCamera)
+        {
+            Alert.error("Select the camera first!");
+            return;
+        }
+
+        let endpoint = "http://127.0.0.1:5000/configure-alerting/"
+            + this.state.selectedCamera.value;
+
+        const payload = new URLSearchParams();
+        payload.append('mail', email);
+        payload.append('start_date', startDate);
+        payload.append('end_date', endDate);
+
+
+        axios({
+            url: endpoint,
+            method: 'post',
+            params: payload
+        })
+            .then(function (response) {
+                Alert.success('Report generated successfully');
+            })
+    }
+
+
 
     formHandler(formFields) {
         console.log(formFields);
@@ -183,7 +263,8 @@ class Main extends React.Component {
 
 render() {
     const { selectedObjects, selectedCamera } = this.state;
-    const { email, objects, startDate, endDate } = this.state.formFields;
+    const { email, objects, startDate, endDate } = this.state.alertFormFields;
+    const { reportEmail, reportStartDate, reportEndDate } = this.state.reportFormFields;
 
 return (
     <div className="container">
@@ -193,7 +274,7 @@ return (
             <button type="button" className="btn btn-default btn-conf" onClick={this.openAlertModal}>
                 <span><i className="fa fa-cog pr-2"/> Configure alerts</span>
             </button>
-            <button type="button" className="btn btn-default btn-conf" onClick={this.openAlertModal}>
+            <button type="button" className="btn btn-default btn-conf" onClick={this.openReportModal}>
                 <span><i className="fa fa-upload pr-2"/> Generate report</span>
             </button>
             <button type="button" className="btn btn-default btn-logout" onClick={this.handleLogout}>
@@ -249,11 +330,11 @@ return (
           isOpen={this.state.isAlertModalOpen}
           onRequestClose={this.closeAlertModal}
           className="modal-content-custom"
-          contentLabel="Generate report"
+          contentLabel="Configure alerts"
         >
           <div className="alertModal">
               <h2>Configure alerts</h2>
-              <form onSubmit={() => this.formHandler(this.state.formFields)}>
+              <form onSubmit={() => this.formHandler(this.state.alertFormFields)}>
                       <p>E-mail</p>
                       <input
                           type="email" name="email"
@@ -302,6 +383,55 @@ return (
               </form>
           </div>
         </Modal>
+          <Modal
+              isOpen={this.state.isReportModalOpen}
+              onRequestClose={this.closeReportModal}
+              className="modal-content-custom"
+              contentLabel="Generate report"
+          >
+              <div className="alertModal">
+                  <h2>Generate report</h2>
+                  <form onSubmit={() => this.formHandler(this.state.reportFormFields)}>
+                      <p>E-mail</p>
+                      <input
+                          type="email" name="reportEmail"
+                          onChange={(e) => this.reportInputChangeHandler.call(this, e)}
+                          className="inputs"
+                          value={reportEmail}/> <br/>
+                      <p>Start date</p>
+                      <DatePicker
+                          selected={reportStartDate}
+                          onChange={(value) => this.handleReportDateChange("reportStartDate", value)}
+                          showTimeSelect
+                          timeFormat="HH:mm"
+                          timeIntervals={15}
+                          dateFormat='d/M/YY HH:mm'
+                          className="inputs"
+                          autoComplete="off"
+                      /> <br />
+                      <p>End date</p>
+                      <DatePicker
+                          selected={reportEndDate}
+                          onChange={(value) => this.handleReportDateChange("reportEndDate", value)}
+                          showTimeSelect
+                          timeFormat="HH:mm"
+                          timeIntervals={15}
+                          dateFormat='d/M/YY HH:mm'
+                          className="inputs"
+                          autoComplete="off"
+                      /> <br/>
+
+                      <button
+                          className="btn btn-success m-3"
+                          type="button"
+                          onClick={() => this.submitReport(reportEmail, reportStartDate, reportEndDate)}
+                      >
+                          Generate report
+                      </button>
+                      <button type="button" className="btn btn-danger mr-4" onClick={this.closeReportModal}>Close</button>
+                  </form>
+              </div>
+          </Modal>
 
       </div>
 
